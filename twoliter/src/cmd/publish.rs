@@ -47,9 +47,11 @@ impl PublishAmi {
         CargoMake::new(&project, &self.arch)?
             .env("TWOLITER_TOOLS_DIR", tempdir.path().display().to_string())
             .env("PUBLISH_INFRA_CONFIG_PATH", &self.infra_config_path)
+            .env("BUILDSYS_ARCH", &self.arch)
+            .env("BUILDSYS_VARIANT", &self.variant)
             .makefile(makefile_path)
             .project_dir(project.project_dir())
-            .exec("ami")
+            ._exec("ami")
             .await
     }
 }

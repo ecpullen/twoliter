@@ -1,41 +1,70 @@
-use std::path::PathBuf;
-
+use crate::{docker::ImageArchUri, common::exec};
+use crate::project::Project;
 use anyhow::{bail, Result};
 use log::trace;
+use std::path::PathBuf;
 use tokio::process::Command;
 
-use crate::common::exec;
-use crate::docker::ImageArchUri;
-use crate::project::Project;
-
-fn require_sdk(project: &Project, arch: &str) -> Result<(ImageArchUri, ImageArchUri)> {
-    match (project.sdk(arch), project.toolchain(arch)) {
-        (Some(s), Some(t)) => Ok((s, t)),
-        _ => bail!(
-            "When using twoliter make, it is required that the SDK and toolchain be specified in \
-            Twoliter.toml"
-        ),
-    }
-}
-
+/// A struct used to invoke `cargo make` tasks with `twoliter`'s `Makefile.toml`.
+/// ```rust
+/// # use crate::project::Project;
+/// # use crate::test::data_dir;
+/// # use self::CargoMake;
+/// # let project_path = data_dir().join("Twoliter-1.toml");
+/// # let makefile_path = data_dir().join("Makefile.toml");
+/// # let project_dir = data_dir();
+///
+/// // First create a twoliter project.
+/// let project = Project::load(project_path).await.unwrap();
+/// // Add the architecture that cargo make will be invoked for.
+/// // This is required so that the correct sdk and toolchain are selected.
+/// let arch = "x86_64";
+///
+/// // Create the `cargo make` command.
+/// let cargo_make_command = CargoMake::new(&project, arch)
+///     .unwrap()
+///     // Specify path to the `Makefile.toml` (Default: `Makefile.toml`)
+///     .makefile(makefile_path)
+///     // Specify the project directory (Default: `.`)
+///     .project_dir(project_dir)
+///     // Add environment variable to the command
+///     .env("FOO", "bar")
+///     // Add cargo make arguments such as `-q` (quiet)
+///     ._arg("-q");
+///
+/// // Run the `cargo make` task
+/// cargo_make_command.clone()
+///     ._exec("verify-twoliter-env")
+///     .await
+///     .unwrap();
+///
+/// // Run the `cargo make` task with args
+/// cargo_make_command
+///     .exec_with_args("verify-env-set-with-arg", ["FOO"])
+///     .await
+///     .unwrap();
+/// ```
 #[derive(Debug, Clone, Default)]
-pub(crate) struct CargoMake {
+pub struct CargoMake {
     makefile_path: Option<PathBuf>,
     project_dir: Option<PathBuf>,
     args: Vec<String>,
 }
 
 impl CargoMake {
+    /// Create a new `cargo make` command. The sdk and toolchain environment variables will be set
+    /// based on the definitions in `Twoliter.toml` and `arch`.
     pub(crate) fn new<S>(project: &Project, arch: S) -> Result<Self>
     where
         S: Into<String>,
     {
-        let (sdk, toolchain) = require_sdk(&project, &arch.into())?;
+        let (sdk, toolchain) = require_sdk(project, &arch.into())?;
         Ok(Self::default()
             .env("TLPRIVATE_SDK_IMAGE", sdk)
             .env("TLPRIVATE_TOOLCHAIN", toolchain))
     }
 
+    /// Specify the path to the `Makefile.toml` for the `cargo make` command
     pub(crate) fn makefile<P>(mut self, makefile_path: P) -> Self
     where
         P: Into<PathBuf>,
@@ -44,6 +73,7 @@ impl CargoMake {
         self
     }
 
+    /// Specify the project directory for the `cargo make` command
     pub(crate) fn project_dir<P>(mut self, project_dir: P) -> Self
     where
         P: Into<PathBuf>,
@@ -52,6 +82,7 @@ impl CargoMake {
         self
     }
 
+    /// Specify environment variables that should be applied for this comand
     pub(crate) fn env<S1, S2>(mut self, key: S1, value: S2) -> Self
     where
         S1: Into<String>,
@@ -62,7 +93,8 @@ impl CargoMake {
         self
     }
 
-    pub(crate) fn envs<S1, S2, V>(mut self, env_vars: V) -> Self
+    /// Specify environment variables that should be applied for this comand
+    pub(crate) fn _envs<S1, S2, V>(mut self, env_vars: V) -> Self
     where
         S1: Into<String>,
         S2: Into<String>,
@@ -75,6 +107,7 @@ impl CargoMake {
         self
     }
 
+    /// Specify `cargo make` arguments that should be applied for this comand
     pub(crate) fn _arg<S>(mut self, arg: S) -> Self
     where
         S: Into<String>,
@@ -83,6 +116,7 @@ impl CargoMake {
         self
     }
 
+    /// Specify `cargo make` arguments that should be applied for this comand
     pub(crate) fn _args<V, S>(mut self, args: V) -> Self
     where
         S: Into<String>,
@@ -92,41 +126,51 @@ impl CargoMake {
         self
     }
 
-    pub(crate) async fn exec<S>(&self, task: S) -> Result<()>
+    /// Execute the `cargo make` task
+    pub(crate) async fn _exec<S>(&self, task: S) -> Result<()>
     where
         S: Into<String>,
     {
         self.exec_with_args(task, Vec::<String>::new()).await
     }
 
-    pub(crate) async fn exec_with_args<S1, S2, V>(&self, task: S1, args: V) -> Result<()>
+    /// Execute the `cargo make` task with arguments provided
+    pub(crate) async fn exec_with_args<S1, S2, I>(&self, task: S1, args: I) -> Result<()>
     where
         S1: Into<String>,
         S2: Into<String>,
-        V: Into<Vec<S2>>,
+        I: IntoIterator<Item = S2>,
     {
         exec(
             Command::new("cargo")
                 .arg("make")
                 .arg("--disable-check-for-updates")
                 .args(
-                    self.makefile_path
-                        .iter()
-                        .map(|path| vec!["--makefile".to_string(), path.display().to_string()])
-                        .flatten(),
+                    self.makefile_path.iter().flat_map(|path| {
+                        vec!["--makefile".to_string(), path.display().to_string()]
+                    }),
                 )
                 .args(
-                    self.makefile_path
+                    self.project_dir
                         .iter()
-                        .map(|path| vec!["--cwd".to_string(), path.display().to_string()])
-                        .flatten(),
+                        .flat_map(|path| vec!["--cwd".to_string(), path.display().to_string()]),
                 )
                 .args(build_system_env_vars()?)
                 .args(&self.args)
                 .arg(task.into())
-                .args(args.into().into_iter().map(Into::into)),
+                .args(args.into_iter().map(Into::into)),
         )
         .await
+    }
+}
+
+fn require_sdk(project: &Project, arch: &str) -> Result<(ImageArchUri, ImageArchUri)> {
+    match (project.sdk(arch), project.toolchain(arch)) {
+        (Some(s), Some(t)) => Ok((s, t)),
+        _ => bail!(
+            "When using twoliter make, it is required that the SDK and toolchain be specified in \
+            Twoliter.toml"
+        ),
     }
 }
 

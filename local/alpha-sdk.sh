@@ -114,13 +114,13 @@ tag="${tag:=twoliter.alpha/bottlerocket-sdk}"
 
 cd "${bottlerocket_dir}"
 
-cargo make \
-    -e "BUILDSYS_VARIANT=${variant}" \
-    -e "BUILDSYS_ARCH=${arch}" \
-    -e "BUILDSYS_SDK_NAME=${sdk_name}" \
-    -e "BUILDSYS_SDK_VERSION=${sdk_version}" \
-    -e "BUILDSYS_SDK_REGISTRY=${sdk_registry}" \
-    build-variant
+# cargo make \
+#     -e "BUILDSYS_VARIANT=${variant}" \
+#     -e "BUILDSYS_ARCH=${arch}" \
+#     -e "BUILDSYS_SDK_NAME=${sdk_name}" \
+#     -e "BUILDSYS_SDK_VERSION=${sdk_version}" \
+#     -e "BUILDSYS_SDK_REGISTRY=${sdk_registry}" \
+#     build-variant
 
 sdk="${sdk_registry}/${sdk_name}-sdk-${arch}:${sdk_version}"
 

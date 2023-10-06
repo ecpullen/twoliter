@@ -32,6 +32,7 @@ included-packages = [
     #other
     "hello-agent",
     "hello-go",
+    "hello-log",
 ]
 kernel-parameters = [
     "console=tty0",
@@ -47,3 +48,4 @@ path = "../variants.rs"
 [build-dependencies]
 hello-agent = { path = "../../packages/hello-agent" }
 hello-go = { path = "../../packages/hello-go" }
+hello-log = { path = "../../packages/hello-log" }

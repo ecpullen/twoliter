@@ -19,9 +19,14 @@ name = "hello-go"
 version = "0.1.0"
 
 [[package]]
+name = "hello-log"
+version = "0.1.0"
+
+[[package]]
 name = "hello-ootb"
 version = "0.1.0"
 dependencies = [
  "hello-agent",
  "hello-go",
+ "hello-log",
 ]

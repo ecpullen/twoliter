@@ -15,7 +15,6 @@ Source103: hello-go.service
 Source104: hello-go.timer
 
 BuildRequires: %{_cross_os}glibc-devel
-Requires: %{_cross_os}hello-go
 
 %description
 %{summary}.

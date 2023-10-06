@@ -15,7 +15,6 @@ Source103: hello-agent.service
 Source104: hello-agent.timer
 
 BuildRequires: %{_cross_os}glibc-devel
-Requires: %{_cross_os}hello-agent
 
 %description
 %{summary}.
@@ -30,6 +29,7 @@ mkdir bin
 %cargo_build --manifest-path %{_builddir}/sources/Cargo.toml \
     -p hello-agent
 
+%install
 install -d %{buildroot}%{_cross_bindir}
 install -p -m 0755 ${HOME}/.cache/%{__cargo_target}/release/hello-agent %{buildroot}%{_cross_bindir}
  
