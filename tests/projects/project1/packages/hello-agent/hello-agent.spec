@@ -26,12 +26,12 @@ BuildRequires: %{_cross_os}glibc-devel
 %build
 mkdir bin
 
-%cargo_build --manifest-path %{_builddir}/sources/Cargo.toml \
+%cargo_build_static --manifest-path %{_builddir}/sources/Cargo.toml \
     -p hello-agent
 
 %install
 install -d %{buildroot}%{_cross_bindir}
-install -p -m 0755 ${HOME}/.cache/%{__cargo_target}/release/hello-agent %{buildroot}%{_cross_bindir}
+install -p -m 0755 ${HOME}/.cache/.static/%{__cargo_target_static}/release/hello-agent %{buildroot}%{_cross_bindir}
  
 install -d %{buildroot}%{_cross_unitdir}
 install -p -m 0644 \
