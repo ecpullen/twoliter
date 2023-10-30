@@ -1,6 +1,6 @@
 [workspace]
 resolver = "1"
-members = ["hello-ootb", "aws-test-1"]
+members = ["hello-ootb"]
 
 [profile.dev]
 debug = false
